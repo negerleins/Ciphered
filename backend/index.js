@@ -19,8 +19,9 @@ app.use(express.json()); // To parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // To parse x-www-form-urlencoded bodies
 
 // Input Validation Schema using Joi
-const userSchema = Joi.object({
+const createUserSchema = Joi.object({
   name: Joi.string().required(),
+  identifier: Joi.string().required(),
 });
 
 const getUserSchema = Joi.object({
@@ -29,6 +30,11 @@ const getUserSchema = Joi.object({
 
 const inviteSchema = Joi.object({
   userId: Joi.number().required(),
+  key: Joi.string().required(),
+  identifier: Joi.string().required(),
+});
+
+const claimSchema = Joi.object({
   key: Joi.string().required(),
 });
 
@@ -64,13 +70,53 @@ app.post("/user", (req, res) => {
 
     res.status(200).send({
       response: "User found",
-      user,
+      data: {
+        name: user.name,
+        id: user.id,
+      },
     });
   } catch (err) {
     console.error("Database fetch error:", err.message);
 
     res.status(500).send({
       error: "Failed to fetch user",
+      details: err.message,
+    });
+  }
+});
+
+app.post("/claim", (req, res) => {
+  const { error, value } = claimSchema.validate(req.body);
+
+  if (error) {
+    return res.status(400).send({
+      error: "Invalid request",
+      details: error.details[0].message,
+    });
+  }
+
+  const { key } = value;
+
+  try {
+    // Check if the user exists using the correct column name (e.g., 'id')
+    const session = db.prepare("SELECT * FROM sessions WHERE key = ?").get(key);
+
+    if (!session) {
+      return res.status(404).send({
+        error: "Not Found",
+        details: "Session not found.",
+      });
+    }
+
+    res.status(200).send({
+      response: "Session found",
+      session,
+    });
+  } catch (err) {
+    console.error("Database fetch error:", err.message);
+
+    res.status(500).send({
+      error: "Failed to fetch session",
       details: err.message,
     });
   }
@@ -86,12 +132,12 @@ app.post("/invite", (req, res) => {
     });
   }
 
-  const { userId, key } = value;
+  const { userId, key, identifier } = value;
 
   try {
     // Check if the user already exists
     const existingEncryption = db
-      .prepare("SELECT * FROM users WHERE key = ?")
+      .prepare("SELECT * FROM sessions WHERE key = ?")
       .get(key);
 
     if (existingEncryption) {
@@ -101,13 +147,22 @@ app.post("/invite", (req, res) => {
       });
     }
 
+    const existingSession = db
+      .prepare("SELECT * FROM users WHERE identifier = ? AND id = ?")
+      .get(identifier, userId);
+
+    if (!existingSession) {
+      return res.status(409).send({
+        error: "Invalid session.",
+      });
+    }
+
     // Insert the new user
-    const stmt = db.prepare("INSERT INTO users (name, email) VALUES (?, ?)");
-    const info = stmt.run(userId, key);
+    const stmt = db.prepare("INSERT INTO sessions (userId, key) VALUES (?, ?)");
+    stmt.run(userId, key);
 
     res.status(201).send({
-      response: "User created successfully",
-      userId: info.lastInsertRowid,
+      response: "Session created successfully"
     });
   } catch (err) {
     console.error("Database insertion error:", err.message);
@@ -116,12 +171,12 @@ app.post("/invite", (req, res) => {
     if (err.code === "SQLITE_CONSTRAINT") {
       return res.status(409).send({
         error: "Conflict",
-        details: "Email already exists.",
+        details: "Session already exists.",
       });
     }
 
     res.status(500).send({
-      error: "Failed to create user",
+      error: "Failed to create session",
       details: err.message,
     });
   }
@@ -129,7 +184,7 @@ app.post("/invite", (req, res) => {
 
 app.post("/create", (req, res) => {
   // Validate the incoming request data
-  const { error, value } = userSchema.validate(req.body);
+  const { error, value } = createUserSchema.validate(req.body);
 
   if (error) {
     return res.status(400).send({
@@ -138,7 +193,7 @@ app.post("/create", (req, res) => {
     });
   }
 
-  const { name } = value;
+  const { name, identifier } = value;
 
   try {
     // Check if the user already exists
@@ -153,9 +208,22 @@ app.post("/create", (req, res) => {
       });
     }
 
+    const existingIdentifier = db
+      .prepare("SELECT * FROM users WHERE identifier = ?")
+      .get(identifier);
+
+    if (existingIdentifier) {
+      return res.status(409).send({
+        error: "Conflict",
+        details: "A user with this identifier already exists.",
+      });
+    }
+
     // Insert the new user (fixed the VALUES clause)
-    const stmt = db.prepare("INSERT INTO users (name) VALUES (?)");
-    const info = stmt.run(name);
+    const stmt = db.prepare(
+      "INSERT INTO users (name, identifier) VALUES (?, ?)"
+    );
+    const info = stmt.run(name, identifier);
 
     res.status(201).send({
       response: "User created successfully",
@@ -168,14 +236,14 @@ app.post("/create", (req, res) => {
     if (err.code === "SQLITE_CONSTRAINT") {
       return res.status(409).send({
         error: "Conflict",
-        details: "Name already exists.",
+        details: "Already exists.",
+      });
+    } else {
+      res.status(500).send({
+        error: "Failed to create user",
+        details: err.message,
       });
     }
-
-    res.status(500).send({
-      error: "Failed to create user",
-      details: err.message,
-    });
   }
 });
 
