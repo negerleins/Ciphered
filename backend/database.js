@@ -23,7 +23,13 @@ db.exec(`CREATE TABLE IF NOT EXISTS users (
 db.exec(`CREATE TABLE IF NOT EXISTS sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     userId INTEGER NOT NULL,
-    sessionKey TEXT NOT NULL
-  );`);
+    key TEXT NOT NULL
+);`);
+
+db.exec(`CREATE TABLE IF NOT EXISTS chats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key TEXT NOT NULL,
+    content TEXT NOT NULL
+);`);
 
 export default db;
