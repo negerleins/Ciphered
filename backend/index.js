@@ -9,7 +9,7 @@ import express from "express";
 import cors from "cors";
 import db from "./database.js";
 import Joi from "joi"; // For input validation
-import { WebSocketServer } from "ws"; // Import ws WebSocketServer
+// import { WebSocketServer } from "ws"; // Import ws WebSocketServer
 
 const port = 3001;
 const app = express();
@@ -19,77 +19,8 @@ app.use(cors());
 app.use(express.json()); // To parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // To parse x-www-form-urlencoded bodies
 
-// Create HTTP server
-const server = app.listen(port, () => {
+app.listen(port, () => {
   console.log(`Server is listening on port ${port}`);
-});
-
-// Create WebSocket server
-const wss = new WebSocketServer({ server });
-// Map to store clients by session keys
-const sessions = new Map();
-
-// WebSocket connection handler
-wss.on("connection", (ws, req) => {
-  console.log("Client attempting to connect");
-
-  // Example: Retrieve the session key from query parameters (or send it in the first message)
-  const params = new URLSearchParams(req.url.replace("/?", ""));
-  const sessionKey = params.get("key");
-
-  if (!sessionKey) {
-    ws.close(4001, "Missing session key"); // Close connection if no key is provided
-    return;
-  }
-
-  // Check if the session key exists in the database
-  const session = db.prepare("SELECT * FROM sessions WHERE key = ?").get(sessionKey);
-
-  if (!session) {
-    ws.close(4002, "Invalid session key"); // Close connection if key is invalid
-    return;
-  }
-
-  console.log(`Client connected with session key: ${sessionKey}`);
-
-  // Store the session key in the WebSocket instance for future reference
-  ws.sessionKey = sessionKey;
-
-  // Add the WebSocket to the session's list of clients
-  if (!sessions.has(sessionKey)) {
-    sessions.set(sessionKey, []);
-  }
-  sessions.get(sessionKey).push(ws);
-
-  // Handle incoming WebSocket messages
-  ws.on("message", (message) => {
-    console.log(`Received message in session ${sessionKey}: ${message}`);
-
-    // Broadcast the message to all clients in the same session
-    const clientsInSession = sessions.get(sessionKey);
-    clientsInSession.forEach((client) => {
-      if (client !== ws && client.readyState === ws.OPEN) {
-        client.send(message);
-      }
-    });
-  });
-
-  // Handle WebSocket disconnection
-  ws.on("close", () => {
-    console.log("Client disconnected");
-
-    // Remove the WebSocket from the session
-    const clientsInSession = sessions.get(sessionKey);
-    const index = clientsInSession.indexOf(ws);
-    if (index !== -1) {
-      clientsInSession.splice(index, 1);
-    }
-
-    // If the session is empty, delete it from the map
-    if (clientsInSession.length === 0) {
-      sessions.delete(sessionKey);
-    }
-  });
 });
 
 // Input Validation Schema using Joi
@@ -141,13 +72,6 @@ app.post("/send", (req, res) => {
     // Insert the new message
     const stmt = db.prepare("INSERT INTO chats (key, content) VALUES (?, ?)");
     stmt.run(key, content);
-
-    // Broadcast the message to all connected WebSocket clients
-    wss.clients.forEach((client) => {
-      if (client.readyState === client.OPEN) {
-        client.send(JSON.stringify({ key, content }));
-      }
-    });
 
     res.status(200).send({
       response: "Message sent successfully",
@@ -422,9 +346,3 @@ app.use((_, res) => {
 db.exec("DELETE FROM users");
 db.exec("DELETE FROM sessions");
 db.exec("DELETE FROM chats");
-
-// Start the server
-app.listen(port, '127.0.0.1', () => {
-    console.log(`Server is listening on port ${port}`);
-  });
-  
