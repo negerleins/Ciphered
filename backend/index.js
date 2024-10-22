@@ -11,20 +11,6 @@ import db from "./database.js";
 import Joi from "joi"; // For input validation
 // import { WebSocketServer } from "ws"; // Import ws WebSocketServer
 
-const port = 3001;
-const app = express();
-
-// Middleware
-app.use(cors());
-app.use(express.json()); // To parse JSON bodies
-app.use(express.urlencoded({ extended: true })); // To parse x-www-form-urlencoded bodies
-
-app.listen(port, () => {
-  console.log(`Server is listening on port ${port}`);
-});
-
-// Input Validation Schema using Joi
-
 class Server {
   #createUserSchema = Joi.object({
     name: Joi.string().required(),
@@ -336,29 +322,50 @@ class Server {
     }
   }
 
-  constructor() {
-    this.messages = [];
-  }
+  #middleware() {
+    this.app.use(cors());
+    this.app.use(express.json()); // To parse JSON bodies
+    this.app.use(express.urlencoded({ extended: true })); // To parse x-www-form-urlencoded bodies
+  };
 
-  bind() {
+  #bind() {
     Object.entries(this.#bindEndpoints).forEach(([method, routes]) => {
       Object.entries(routes).forEach(([path, handler]) => {
-        app[method](path, handler);
+        this.app[method](path, handler);
       });
+    });
+
+    this.app.use(
+      (_, res) => {
+        res.status(405).send({
+          error: "Method Not Allowed",
+        });
+      }
+    );
+  }
+
+  constructor() {
+    this.messages = [];
+    this.app = express();
+
+    this.#middleware();
+    this.#bind();
+  }
+
+  /**
+   * 
+   * @param {number} port 
+   */
+  start = (port) => {
+    this.app.listen(port, () => {
+      console.log(`Server is listening on port ${port}`);
     });
   }
 };
 
 // Create a new server instance and bind the endpoints
 const server = new Server();
-server.bind();
-
-// Handle unsupported methods
-app.use((_, res) => {
-  res.status(405).send({
-    error: "Method Not Allowed",
-  });
-});
+server.start(3001);
 
 // Clear the database tables
 db.exec("DELETE FROM users");
