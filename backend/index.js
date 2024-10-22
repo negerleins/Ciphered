@@ -4,7 +4,10 @@
  * This file sets up and configures the Express application.
  *
  * @requires express - Fast, unopinionated, minimalist web framework for Node.js.
- */
+ * @requires cors - Middleware for enabling Cross-Origin Resource Sharing (CORS) with various options.
+ * @requires sqlite3 - Asynchronous, non-blocking SQLite3 bindings for Node.js.
+ * @requires Joi - Object schema description language and validator for JavaScript objects.
+*/
 import express from "express";
 import cors from "cors";
 import db from "./database.js";
