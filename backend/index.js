@@ -14,6 +14,15 @@ import db from "./database.js";
 import Joi from "joi"; // For input validation
 // import { WebSocketServer } from "ws"; // Import ws WebSocketServer
 
+/**
+ * @class Server
+ * @classdesc A class representing the server.
+ * @property {Array} messages - An array of messages.
+ * @property {Object} app - An instance of the Express application.
+ * @method {Function} start - A method to start the server.
+ * @method {Function} #middleware - A private method to set up middleware.
+ * @method {Function} #bind - A private method to bind the endpoints.
+ */
 class Server {
   #createUserSchema = Joi.object({
     name: Joi.string().required(),
@@ -40,6 +49,14 @@ class Server {
     key: Joi.string().required()
   });
 
+  /**
+   * @private
+   * @type {Object}
+   * @description An object containing the endpoints and their handlers.
+   * @memberof Server
+   * @property {Object} get - An object containing the GET endpoints and their handlers.
+   * @property {Object} post - An object containing the POST endpoints and their handlers.
+  */
   #bindEndpoints = {
     get: {
       ["/"]: (_, res) => {
@@ -325,12 +342,24 @@ class Server {
     }
   }
 
+  /**
+   * @private
+   * @description Middleware for the Express application.
+   * @returns {void}
+   * @memberof Server
+   */
   #middleware() {
     this.app.use(cors());
     this.app.use(express.json()); // To parse JSON bodies
     this.app.use(express.urlencoded({ extended: true })); // To parse x-www-form-urlencoded bodies
   };
 
+  /**
+   * @private
+   * @description Bind the endpoints to the Express application.
+   * @returns {void}
+   * @memberof Server
+   */
   #bind() {
     Object.entries(this.#bindEndpoints).forEach(([method, routes]) => {
       Object.entries(routes).forEach(([path, handler]) => {
@@ -347,6 +376,13 @@ class Server {
     );
   }
 
+  /**
+   * Constructor for the Server class.
+   * @constructor
+   * @description Create a new instance of the Server class.
+   * @memberof Server
+   * @returns {Server}
+   */
   constructor() {
     this.messages = [];
     this.app = express();
@@ -356,7 +392,10 @@ class Server {
   }
 
   /**
-   * 
+   * Start the server.
+   * @public
+   * @description Start the server on the specified port.
+   * @memberof Server
    * @param {number} port 
    */
   start = (port) => {
