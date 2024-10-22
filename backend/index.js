@@ -341,11 +341,11 @@ class Server {
   }
 
   bind() {
-    for (const method in this.#bindEndpoints) {
-      for (const path in this.#bindEndpoints[method]) {
-        app[method](path, this.#bindEndpoints[method][path]);
-      }
-    }
+    Object.entries(this.#bindEndpoints).forEach(([method, routes]) => {
+      Object.entries(routes).forEach(([path, handler]) => {
+        app[method](path, handler);
+      });
+    });
   }
 };
 
