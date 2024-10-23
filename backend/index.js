@@ -405,6 +405,8 @@ class Server {
   }
 };
 
+console.log("Starting server...");
+
 // Create a new server instance and bind the endpoints
 const server = new Server();
 server.start(3001);
