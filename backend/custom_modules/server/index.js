@@ -373,7 +373,7 @@ class Server {
       this.messages = [];
 
       // Set the default port number
-      this._port = 3001;
+      this._port = process.env.PORT || 3001;
   
       this.#middleware();
       this.#bind();
@@ -396,11 +396,11 @@ class Server {
      * @description Start the server on the specified port.
      * @memberof Server
      */
-    start = () => {
-      const port = process.env.PORT || this._port;
-      
-      this.app.listen(port, () => {
-        console.log(`Server is listening on port ${port}`);
+    listen = () => {
+      this.app.listen(this._port, () => {
+        console.log(
+          `Server is listening on port ${this._port}`
+        );
       });
     }
 
