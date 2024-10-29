@@ -1,0 +1,16 @@
+{
+  "apps" : [{
+    "name": "express-app",
+    "script": "index.js",
+    "watch": ["index.js"],
+    "ignore_watch": ["node_modules"],
+    "watch_options": {
+      "usePolling": true,
+      "alwaysStat": true,
+      "useFsEvents": false
+    },
+    "env": {
+        "NODE_ENV": "development"
+    }
+  }]
+}
