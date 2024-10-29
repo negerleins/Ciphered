@@ -30,7 +30,7 @@ class Server {
     });
   
     #getUserSchema = Joi.object({
-      userId: Joi.number().required()
+      identifier: Joi.string().required()
     });
   
     #inviteSchema = Joi.object({
@@ -149,11 +149,11 @@ class Server {
             });
           }
   
-          const { userId } = value;
+          const { identifier } = value;
   
           try {
             // Check if the user exists using the correct column name (e.g., 'id')
-            const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+            const user = db.prepare("SELECT * FROM users WHERE identifier = ?").get(identifier);
   
             if (!user) {
               return res.status(404).send({
@@ -164,10 +164,7 @@ class Server {
   
             res.status(200).send({
               response: "User found",
-              data: {
-                name: user.name,
-                id: user.id,
-              },
+              data: user,
             });
           } catch (err) {
             console.error("Database fetch error:", err.message);
@@ -289,18 +286,6 @@ class Server {
           const { name, identifier } = value;
   
           try {
-            // Check if the user already exists
-            const existingUser = db
-              .prepare("SELECT * FROM users WHERE name = ?")
-              .get(name);
-  
-            if (existingUser) {
-              return res.status(409).send({
-                error: "Conflict",
-                details: "A user with this name already exists.",
-              });
-            }
-  
             const existingIdentifier = db
               .prepare("SELECT * FROM users WHERE identifier = ?")
               .get(identifier);
@@ -384,11 +369,25 @@ class Server {
      * @returns {Server}
      */
     constructor() {
-      this.messages = [];
       this.app = express();
+      this.messages = [];
+
+      // Set the default port number
+      this._port = 3001;
   
       this.#middleware();
       this.#bind();
+    }
+
+    /**
+     * Set the port number.
+     * @public
+     * @description Set the port number for the server.
+     * @memberof Server
+     * @param {number} integer - The port number.
+     */
+    set PORT(integer) {
+      this._port = integer;
     }
   
     /**
@@ -396,9 +395,10 @@ class Server {
      * @public
      * @description Start the server on the specified port.
      * @memberof Server
-     * @param {number} port 
      */
-    start = (port) => {
+    start = () => {
+      const port = process.env.PORT || this._port;
+      
       this.app.listen(port, () => {
         console.log(`Server is listening on port ${port}`);
       });

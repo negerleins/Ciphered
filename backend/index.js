@@ -13,4 +13,6 @@ console.log("Starting server...");
 
 // Create a new server instance and bind the endpoints
 const server = new Server();
-server.start(3001);
+server.PORT = 3001;
+
+server.start();
