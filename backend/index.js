@@ -9,8 +9,6 @@
 */
 import Server from "server";
 
-console.log("Starting server...");
-
 // Create a new server instance and bind the endpoints
 const server = new Server();
 server.PORT = 3001;
