@@ -349,8 +349,6 @@ server.rate_limit = {
     windowMs: 1 * 60 * 1000, // 15 minutes
     max: 5,
     message: "Too many requests",
-    standardHeaders: true, 
-    legacyHeaders: false, 
     handler: (req, res, next, options) =>
 		res.status(options.statusCode).send({
             message: options.message,
