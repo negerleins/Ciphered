@@ -1,0 +1,21 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "server": "file:custom_modules/server",
+    "path": "^0.12.7",
+    "url": "^0.11.0",
+    "joi": "17.13.3"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11"
+  }
+}
