@@ -58,9 +58,13 @@ class Server extends Database {
      * @see {@link https://www.npmjs.com/package/express}
     */
     set rate_limit(config) {
+        console.log('Setting up rate limiter with config:', config);
         this.limiter = rateLimit(config);
         this.app.use(this.limiter);
+        console.log('Rate limiter applied to app');
     }
+    
+
 
     /**
      * @public
@@ -105,17 +109,13 @@ class Server extends Database {
     #bind() {
         Object.entries(this.#bindEndpoints).forEach(([method, routes]) => {
             Object.entries(routes).forEach(([route, handler]) => {
-                this.app[method](route, (req, res) => { 
-                    if (this.limiter) {
-                        this.limiter(req, res, () => {
-                            handler(this, req, res)
-                        });
-                        
-                        return;
-                    }
+                if (this.limiter) {
+                    console.log('Applying rate limiter to route:', route);
+                }
 
-                    handler(this, req, res)
-                 });
+                this.app[method](route, this.limiter, (req, res) => {
+                    handler(this, req, res);
+                });
             })
         });
 
@@ -137,8 +137,6 @@ class Server extends Database {
      */
     constructor(dbPath, options) {
         super(dbPath, options);
-
-        // Create a new instance of the Express application
         this.app = express();
 
         this.#middleware();

@@ -46,6 +46,29 @@ const keySchema = Joi.object({
 
 // Create a new server instance and bind the endpoints
 const server = new Server(__path, { verbose: console.log });
+
+server.rate_limit = {
+    windowMs: 1 * 60 * 1000, // 15 minutes
+    max: 10,
+    message: "Too many requests",
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    handler: (req, res, next, options) => {
+        console.log('Rate limit exceeded for IP:', req.ip);
+        res.status(options.statusCode).send({
+            message: options.message,
+            status: options.statusCode
+        });
+    },
+
+    keyGenerator: (req) => {
+        const ip = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        console.log('Detected IP:', ip);
+        return ip;
+    }
+
+};
+
 server.endpoints = {
     get: {
         ["/"]: (_, __, res) => {
@@ -344,28 +367,6 @@ server.parseExec(
 );`
     ]
 );
-
-server.rate_limit = {
-    windowMs: 1 * 60 * 1000, // 15 minutes
-    max: 5,
-    message: "Too many requests",
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: true, // Disable the `X-RateLimit-*` headers
-    handler: (req, res, next, options) => {
-        console.log('Rate limit exceeded for IP:', req.ip);
-        res.status(options.statusCode).send({
-            message: options.message,
-            status: options.statusCode
-        });
-    },
-
-    keyGenerator: (req) => {
-        const ip = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        console.log('Detected IP:', ip);
-        return ip;
-    }
-
-};
 
 // Start the server
 server.listen(3002);
