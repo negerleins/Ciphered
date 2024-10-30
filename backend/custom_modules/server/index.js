@@ -59,6 +59,7 @@ class Server extends Database {
     */
     set rate_limit(config) {
         this.limiter = rateLimit(config);
+        this.app.use(this.limiter);
     }
 
     /**
