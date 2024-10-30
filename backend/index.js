@@ -11,6 +11,7 @@ import Server from "server";
 import path from "path";
 import url from "url";
 import Joi from "joi";
+import { StatusCodes }from 'http-status-codes';
 
 // Import the path module
 const __filename = url.fileURLToPath(import.meta.url);
@@ -47,16 +48,10 @@ const keySchema = Joi.object({
 const server = new Server(__path, { verbose: console.log });
 server.endpoints = {
     get: {
-        ["/"]: (_, req, res) => {
-            const parseIp = (req) => {
-                const ip = req.headers['x-forwarded-for']?.split(',').shift() || req.socket?.remoteAddress;
-                return ip.includes('::ffff:') ? ip.split('::ffff:')[1] : ip;
-            }
-
-            console.log(parseIp(req));
-
-            return res.status(200).send({
+        ["/"]: (_, __, res) => {
+            return res.status(StatusCodes.OK).send({
                 response: "We are online!",
+                status: StatusCodes.OK
             });
         }
     },
@@ -65,7 +60,7 @@ server.endpoints = {
             const { error, value } = messageSchema.validate(req.body);
 
             if (error) {
-                return res.status(400).send({
+                return res.status(StatusCodes).send({
                     error: "Invalid request",
                     details: error.details[0].message,
                 });
@@ -78,7 +73,7 @@ server.endpoints = {
                 const stmt = database.prepare("INSERT INTO chats (key, content) VALUES (?, ?)");
                 stmt.run(key, content);
 
-                res.status(200).send({
+                res.status(StatusCodes.OK).send({
                     response: "Message sent successfully",
                 });
 
@@ -90,7 +85,7 @@ server.endpoints = {
             } catch (err) {
                 console.error("Database fetch error:", err.message);
 
-                res.status(500).send({
+                res.status(StatusCodes.INTERNAL_SERVER_ERROR).send({
                     error: "Failed to fetch user",
                     details: err.message,
                 });
@@ -100,7 +95,7 @@ server.endpoints = {
             const { error, value } = keySchema.validate(req.body);
 
             if (error) {
-                return res.status(400).send({
+                return res.status(StatusCodes.BAD_REQUEST).send({
                     error: "Invalid request",
                     details: error.details[0].message,
                 });
@@ -112,13 +107,13 @@ server.endpoints = {
                 const chats = database.prepare("SELECT * FROM chats WHERE key = ?").all(key);
 
                 if (chats.length === 0) {
-                    return res.status(404).send({
+                    return res.status(StatusCodes.NOT_FOUND).send({
                         error: "Not Found",
                         details: "No messages found.",
                     });
                 }
 
-                res.status(200).send({
+                res.status(StatusCodes.OK).send({
                     response: "Messages found",
                     chats,
                 });
@@ -128,7 +123,7 @@ server.endpoints = {
             } catch (err) {
                 console.error("Database fetch error:", err.message);
 
-                res.status(500).send({
+                res.status(StatusCodes.INTERNAL_SERVER_ERROR).send({
                     error: "Failed to fetch session",
                     details: err.message,
                 });
@@ -138,7 +133,7 @@ server.endpoints = {
             const { error, value } = getUserSchema.validate(req.body);
 
             if (error) {
-                return res.status(400).send({
+                return res.status(StatusCodes.BAD_REQUEST).send({
                     error: "Invalid request",
                     details: error.details[0].message,
                 });
@@ -151,20 +146,20 @@ server.endpoints = {
                 const user = database.prepare("SELECT * FROM users WHERE identifier = ?").get(identifier);
 
                 if (!user) {
-                    return res.status(404).send({
+                    return res.status(StatusCodes.NOT_FOUND).send({
                         error: "Not Found",
                         details: "User not found.",
                     });
                 }
 
-                res.status(200).send({
+                res.status(StatusCodes.OK).send({
                     response: "User found",
                     data: user,
                 });
             } catch (err) {
                 console.error("Database fetch error:", err.message);
 
-                res.status(500).send({
+                res.status(StatusCodes.INTERNAL_SERVER_ERROR).send({
                     error: "Failed to fetch user",
                     details: err.message,
                 });
@@ -174,7 +169,7 @@ server.endpoints = {
             const { error, value } = keySchema.validate(req.body);
 
             if (error) {
-                return res.status(400).send({
+                return res.status(StatusCodes.BAD_REQUEST).send({
                     error: "Invalid request",
                     details: error.details[0].message,
                 });
@@ -186,13 +181,13 @@ server.endpoints = {
                 const session = database.prepare("SELECT * FROM sessions WHERE key = ?").get(key);
 
                 if (!session) {
-                    return res.status(404).send({
+                    return res.status(StatusCodes.NOT_FOUND).send({
                         error: "Not Found",
                         details: "Session not found.",
                     });
                 }
 
-                res.status(200).send({
+                res.status(StatusCodes.OK).send({
                     response: "Session found",
                     session,
                 });
@@ -202,7 +197,7 @@ server.endpoints = {
             } catch (err) {
                 console.error("Database fetch error:", err.message);
 
-                res.status(500).send({
+                res.status(StatusCodes.INTERNAL_SERVER_ERROR).send({
                     error: "Failed to fetch session",
                     details: err.message,
                 });
@@ -212,7 +207,7 @@ server.endpoints = {
             const { error, value } = inviteSchema.validate(req.body);
 
             if (error) {
-                return res.status(400).send({
+                return res.status(StatusCodes.BAD_REQUEST).send({
                     error: "Invalid request",
                     details: error.details[0].message,
                 });
@@ -238,7 +233,7 @@ server.endpoints = {
                     .get(identifier, userId);
 
                 if (!existingSession) {
-                    return res.status(409).send({
+                    return res.status(StatusCodes.CONFLICT).send({
                         error: "Invalid session.",
                     });
                 }
@@ -255,13 +250,13 @@ server.endpoints = {
 
                 // Handle unique constraint violations (as a fallback)
                 if (err.code === "SQLITE_CONSTRAINT") {
-                    return res.status(409).send({
+                    return res.status(StatusCodes.CONFLICT).send({
                         error: "Conflict",
                         details: "Session already exists.",
                     });
                 }
 
-                res.status(500).send({
+                res.status(StatusCodes.INTERNAL_SERVER_ERROR).send({
                     error: "Failed to create session",
                     details: err.message,
                 });
@@ -272,7 +267,7 @@ server.endpoints = {
             const { error, value } = createUserSchema.validate(req.body);
 
             if (error) {
-                return res.status(400).send({
+                return res.status(StatusCodes.BAD_REQUEST).send({
                     error: "Invalid request",
                     details: error.details[0].message,
                 });
@@ -298,7 +293,7 @@ server.endpoints = {
                 );
                 const info = stmt.run(name, identifier);
 
-                res.status(201).send({
+                res.status(StatusCodes.OK).send({
                     response: "User created successfully",
                     userId: info.lastInsertRowid,
                 });
@@ -307,12 +302,12 @@ server.endpoints = {
 
                 // Handle unique constraint violations (as a fallback)
                 if (err.code === "SQLITE_CONSTRAINT") {
-                    return res.status(409).send({
+                    return res.status(StatusCodes.CONFLICT).send({
                         error: "Conflict",
                         details: "Already exists.",
                     });
                 } else {
-                    res.status(500).send({
+                    res.status(StatusCodes.INTERNAL_SERVER_ERROR).send({
                         error: "Failed to create user",
                         details: err.message,
                     });
@@ -350,6 +345,22 @@ server.parseExec(
     ]
 );
 
+server.rate_limit = {
+    windowMs: 1 * 60 * 1000, // 15 minutes
+    max: 5,
+    message: "Too many requests",
+    standardHeaders: true, 
+    legacyHeaders: false, 
+    keyGenerator: (req) => {
+        console.log(req.ip);
+        return req.ip;
+    },
+    handler: (req, res, next, options) =>
+		res.status(options.statusCode).send({
+            message: options.message,
+            status: options.statusCode
+        })
+};
 
 // Start the server
 server.listen(3002);

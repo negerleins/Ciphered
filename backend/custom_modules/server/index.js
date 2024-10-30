@@ -12,7 +12,7 @@
 */
 import express from "express";
 import cors from "cors";
-import Joi from "joi"; // For input validation
+import { rateLimit } from 'express-rate-limit'
 import database from "better-sqlite3";
 // import { WebSocketServer } from "ws"; // Import ws WebSocketServer
 
@@ -48,14 +48,18 @@ class Database {
  */
 class Server extends Database {
     /**
-     * @private
+     * @public
      * @type {Object}
-     * @description An object containing the endpoints and their handlers.
+     * @description An instance of the Express application.
      * @memberof Server
-     * @property {Object} get - An object containing the GET endpoints and their handlers.
-     * @property {Object} post - An object containing the POST endpoints and their handlers.
+     * @property {Object} app - An instance of the Express application.
+     * @default express()
+     * @see {@link https://expressjs.com/}
+     * @see {@link https://www.npmjs.com/package/express}
     */
-    #bindEndpoints = {};
+    set rate_limit(config) {
+        this.limiter = rateLimit(config);
+    }
 
     /**
      * @public
@@ -67,6 +71,16 @@ class Server extends Database {
         this.#bindEndpoints = data;
         this.#bind();
     }
+
+    /**
+     * @private
+     * @type {Object}
+     * @description An object containing the endpoints and their handlers.
+     * @memberof Server
+     * @property {Object} get - An object containing the GET endpoints and their handlers.
+     * @property {Object} post - An object containing the POST endpoints and their handlers.
+    */
+    #bindEndpoints = {};
 
     /**
      * @private
@@ -90,6 +104,14 @@ class Server extends Database {
         Object.entries(this.#bindEndpoints).forEach(([method, routes]) => {
             Object.entries(routes).forEach(([route, handler]) => {
                 this.app[method](route, (req, res) => { 
+                    if (this.limiter) {
+                        this.limiter(req, res, () => {
+                            handler(this, req, res)
+                        });
+                        
+                        return;
+                    }
+
                     handler(this, req, res)
                  });
             })
