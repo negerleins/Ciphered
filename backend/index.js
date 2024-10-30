@@ -351,10 +351,6 @@ server.rate_limit = {
     message: "Too many requests",
     standardHeaders: true, 
     legacyHeaders: false, 
-    keyGenerator: (req) => {
-        console.log(req.ip);
-        return req.ip;
-    },
     handler: (req, res, next, options) =>
 		res.status(options.statusCode).send({
             message: options.message,
