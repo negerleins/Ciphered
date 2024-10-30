@@ -90,6 +90,7 @@ class Server extends Database {
      * @memberof Server
      */
     #middleware() {
+        this.app.set('trust proxy', 1);
         this.app.use(cors());
         this.app.use(express.json()); // To parse JSON bodies
         this.app.use(express.urlencoded({ extended: true })); // To parse x-www-form-urlencoded bodies

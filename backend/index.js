@@ -11,7 +11,7 @@ import Server from "server";
 import path from "path";
 import url from "url";
 import Joi from "joi";
-import { StatusCodes }from 'http-status-codes';
+import { StatusCodes } from 'http-status-codes';
 
 // Import the path module
 const __filename = url.fileURLToPath(import.meta.url);
@@ -350,10 +350,13 @@ server.rate_limit = {
     max: 5,
     message: "Too many requests",
     handler: (req, res, next, options) =>
-		res.status(options.statusCode).send({
+        res.status(options.statusCode).send({
             message: options.message,
             status: options.statusCode
-        })
+        }),
+    keyGenerator: (req) => {
+        return req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    }
 };
 
 // Start the server
