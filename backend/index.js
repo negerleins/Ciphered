@@ -45,10 +45,11 @@ const keySchema = Joi.object({
 });
 
 // Create a new server instance and bind the endpoints
-const server = new Server(__path, { verbose: console.log });
+const server = new Server(__path, { });
+// verbose: console.log 
 
 server.rate_limit = {
-    windowMs: 1 * 60 * 1000, // 15 minutes
+    windowMs: 1 * 10 * 1000,
     max: 5,
 };
 
@@ -352,4 +353,4 @@ server.parseExec(
 );
 
 // Start the server
-server.listen(3002);
+server.listen(3003);

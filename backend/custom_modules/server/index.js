@@ -12,7 +12,6 @@
 */
 import express from "express";
 import cors from "cors";
-import { rateLimit } from 'express-rate-limit'
 import database from "better-sqlite3";
 // import { WebSocketServer } from "ws"; // Import ws WebSocketServer
 
@@ -47,7 +46,7 @@ class Database {
  * @memberof CustomRateLimiter
 */
 class CustomRateLimiter {
-    constructor(windowMs = 60000, max = 5) {
+    constructor(windowMs = 60000, max = 2) {
         this.windowMs = windowMs;
         this.max = max;
         this.requests = new Map();
@@ -60,7 +59,7 @@ class CustomRateLimiter {
 
     cleanupOldRequests() {
         const now = Date.now();
-        
+
         for (const [ip, data] of this.requests) {
             if (now - data.timestamp > this.windowMs) {
                 this.requests.delete(ip);
@@ -71,9 +70,9 @@ class CustomRateLimiter {
     rateLimit(req, res, next) {
         const clientIp = this.getClientIp(req);
         console.log('Request from IP:', clientIp);
-
+    
         this.cleanupOldRequests();
-
+    
         const now = Date.now();
         if (!this.requests.has(clientIp)) {
             this.requests.set(clientIp, { count: 1, timestamp: now });
@@ -87,22 +86,26 @@ class CustomRateLimiter {
             }
             this.requests.set(clientIp, data);
         }
-
+    
         const requestCount = this.requests.get(clientIp).count;
-
+        console.log('Request count:', requestCount);
+    
         res.setHeader('X-RateLimit-Limit', this.max);
         res.setHeader('X-RateLimit-Remaining', Math.max(0, this.max - requestCount));
-
+    
         if (requestCount > this.max) {
             console.log('Rate limit exceeded for IP:', clientIp);
+    
             return res.status(429).json({
                 message: 'Too many requests, please try again later.',
                 status: 429
             });
+        } else {
+            if (typeof next === 'function') {
+                next();
+            }
         }
-
-        next();
-    }
+    }    
 }
 
 
@@ -126,9 +129,7 @@ class Server extends Database {
      * @see {@link https://www.npmjs.com/package/express}
     */
     set rate_limit(config) {
-        console.log('Setting up rate limiter with config:', config);
         this.limiter = new CustomRateLimiter(config.windowMs, config.max);
-        this.app.use((req, res, next) => this.limiter.rateLimit(req, res, next));
         console.log('Rate limiter applied to app');
     }
 
@@ -179,8 +180,15 @@ class Server extends Database {
                     console.log('Applying rate limiter to route:', route);
                 }
 
-                this.app[method](route, (req, res) => {
+                this.app[method](route, async (req, res) => {
+                    if (this.limiter.rateLimit(req, res)) return;
+                    console.log('Request received:', req.method, req.url);
+
                     handler(this, req, res);
+
+                    res.on('finish', () => {
+                        console.log('Request finished');
+                    });  
                 });
             })
         });
@@ -203,7 +211,9 @@ class Server extends Database {
      */
     constructor(dbPath, options) {
         super(dbPath, options);
+
         this.app = express();
+        this.limiter = new CustomRateLimiter();
 
         this.#middleware();
     }
