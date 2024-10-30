@@ -48,11 +48,12 @@ const server = new Server(__path, { verbose: console.log });
 server.endpoints = {
     get: {
         ["/"]: (_, req, res) => {
-            const parseIp = (req) =>
-                req.headers['x-forwarded-for']?.split(',').shift()
-                || req.socket?.remoteAddress
-            
-            console.log(parseIp(req))
+            const parseIp = (req) => {
+                const ip = req.headers['x-forwarded-for']?.split(',').shift() || req.socket?.remoteAddress;
+                return ip.includes('::ffff:') ? ip.split('::ffff:')[1] : ip;
+            }
+
+            console.log(parseIp(req));
 
             return res.status(200).send({
                 response: "We are online!",
