@@ -39,6 +39,74 @@ class Database {
 }
 
 /**
+ * @class CustomRateLimiter
+ * @classdesc A class representing a custom rate limiter.
+ * @property {Number} windowMs - The time window in milliseconds.
+ * @property {Number} max - The maximum number of requests.
+ * @property {Map} requests - A map of requests.
+ * @memberof CustomRateLimiter
+*/
+class CustomRateLimiter {
+    constructor(windowMs = 60000, max = 5) {
+        this.windowMs = windowMs;
+        this.max = max;
+        this.requests = new Map();
+    }
+
+    getClientIp(req) {
+        // Your custom IP detection logic here
+        return req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    }
+
+    cleanupOldRequests() {
+        const now = Date.now();
+        
+        for (const [ip, data] of this.requests) {
+            if (now - data.timestamp > this.windowMs) {
+                this.requests.delete(ip);
+            }
+        }
+    }
+
+    rateLimit(req, res, next) {
+        const clientIp = this.getClientIp(req);
+        console.log('Request from IP:', clientIp);
+
+        this.cleanupOldRequests();
+
+        const now = Date.now();
+        if (!this.requests.has(clientIp)) {
+            this.requests.set(clientIp, { count: 1, timestamp: now });
+        } else {
+            const data = this.requests.get(clientIp);
+            if (now - data.timestamp > this.windowMs) {
+                data.count = 1;
+                data.timestamp = now;
+            } else {
+                data.count++;
+            }
+            this.requests.set(clientIp, data);
+        }
+
+        const requestCount = this.requests.get(clientIp).count;
+
+        res.setHeader('X-RateLimit-Limit', this.max);
+        res.setHeader('X-RateLimit-Remaining', Math.max(0, this.max - requestCount));
+
+        if (requestCount > this.max) {
+            console.log('Rate limit exceeded for IP:', clientIp);
+            return res.status(429).json({
+                message: 'Too many requests, please try again later.',
+                status: 429
+            });
+        }
+
+        next();
+    }
+}
+
+
+/**
  * @class Server
  * @classdesc A class representing the server.
  * @property {Object} app - An instance of the Express application.
@@ -59,12 +127,10 @@ class Server extends Database {
     */
     set rate_limit(config) {
         console.log('Setting up rate limiter with config:', config);
-        this.limiter = rateLimit(config);
-        this.app.use(this.limiter);
+        this.limiter = new CustomRateLimiter(config.windowMs, config.max);
+        this.app.use((req, res, next) => this.limiter.rateLimit(req, res, next));
         console.log('Rate limiter applied to app');
     }
-    
-
 
     /**
      * @public
@@ -113,7 +179,7 @@ class Server extends Database {
                     console.log('Applying rate limiter to route:', route);
                 }
 
-                this.app[method](route, this.limiter, (req, res) => {
+                this.app[method](route, (req, res) => {
                     handler(this, req, res);
                 });
             })
