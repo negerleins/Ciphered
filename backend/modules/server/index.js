@@ -84,9 +84,8 @@ class Server extends Database {
      * @see {@link https://expressjs.com/}
      * @see {@link https://www.npmjs.com/package/express}
     */
-    set rate_limit(config) {
-        this.limiter = rateLimit(config);
-        this.app.use(this.limiter);
+    set limiter(config) {
+        this.app.use(rateLimit(config));
     }
 
     /**
@@ -139,9 +138,7 @@ class Server extends Database {
     #bind() {
         Object.entries(this.#bindEndpoints).forEach(([method, routes]) => {
             Object.entries(routes).forEach(([route, handler]) => {
-                if (this.limiter) {
-                    console.log('Applying rate limiter to route:', route);
-                }
+                console.log('Binding route:', method, route);
 
                 this.app[method](route, async (req, res) => {
                     await handler(this, req, res);
@@ -151,7 +148,6 @@ class Server extends Database {
                 });
             })
         });
-
 
         this.app.use(
             (_, res) => {

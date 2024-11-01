@@ -28,7 +28,7 @@ const server = new Server(__path, {}, ( _, res ) => {
 const config = new Config();
 
 // Set the server configuration
-server.rate_limit = config.limiter;
+server.limiter = config.limiter;
 server.endpoints = config.endpoints;
 
 // Reset the database
@@ -63,7 +63,7 @@ content TEXT NOT NULL
 
 // Start the server
 server.listen(3003).then(({_, port}) => {
-    console.log("Listening on port", port);
+    console.log(" <?> Listening on port:", port);
 }).catch((err) => {
-    console.error("Server start error:", err.message);
+    console.error(" <!> Server start error:", err.message);
 });
