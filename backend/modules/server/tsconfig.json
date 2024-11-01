@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "allowJs": true,                // Allows TypeScript to process JavaScript files
+    "declaration": true,             // Generates .d.ts files
+    "emitDeclarationOnly": true,     // Only generates declaration files
+    "outDir": "./types",             // Specifies output directory for .d.ts files
+    "moduleResolution": "node",      // Ensures modules resolve properly
+    "target": "ESNext"               // Sets ECMAScript target
+  },
+  "include": ["*.js"]         // Specify JavaScript files to include
+}
