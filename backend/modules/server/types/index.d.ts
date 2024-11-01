@@ -9,6 +9,17 @@ export default Server;
  */
 declare class Server extends Database {
     /**
+     * Constructor for the Server class.
+     * @constructor
+     * @description Create a new instance of the Server class.
+     * @param {string} dbPath - The path to the SQLite3 database file.
+     * @param {object} options - Configuration options for the database connection.
+     * @param {Function} callback - A callback function to be executed after the server is started.
+     * @memberof Server
+     * @returns {Server}
+     */
+    constructor(dbPath: string, options: object, callback: Function);
+    /**
      * @public
      * @type {Object}
      * @description An instance of the Express application.
@@ -27,6 +38,7 @@ declare class Server extends Database {
      * @param {Object} data - An object containing the endpoints and their handlers.
      */
     public set endpoints(data: any);
+    callback: Function;
     app: any;
     /**
      * Start the server.
@@ -42,7 +54,7 @@ declare class Server extends Database {
      * @memberof Server
      * @param {Object} data - An object containing the user data.
      */
-    public parseExec: (array: any) => Promise<void>;
+    public parseExec: (array: any) => any;
     #private;
 }
 /**
@@ -53,15 +65,15 @@ declare class Server extends Database {
  * @property {Function} prepare - A function to prepare a SQL query.
  * @memberof Database
  */
-/**
- * Represents a Database connection.
- *
- * @class
- * @param {string} dbPath - The path to the database file.
- * @param {object} options - Configuration options for the database connection.
- */
 declare class Database {
-    constructor(dbPath: any, options: any);
+    /**
+     * Represents a Database connection.
+     *
+     * @class
+     * @param {string} dbPath - The path to the database file.
+     * @param {object} options - Configuration options for the database connection.
+     */
+    constructor(dbPath: string, options: object);
     database: any;
     /**
      * Executes a given SQL query asynchronously.

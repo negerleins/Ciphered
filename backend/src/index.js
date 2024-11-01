@@ -18,7 +18,13 @@ const __dirname = path.dirname(__filename);
 const __path = path.resolve(__dirname, "database.db");
 
 // Create a new server instance and bind the endpoints
-const server = new Server(__path, {});
+const server = new Server(__path, {}, ( _, res ) => {
+    res.on('finish', () => {
+        console.log('Request finished', res.statusCode, res.statusMessage);
+    });
+});
+
+// Create a new configuration instance
 const config = new Config();
 
 // Set the server configuration
@@ -56,7 +62,7 @@ content TEXT NOT NULL
 });
 
 // Start the server
-server.listen(3003).then(({server, port}) => {
+server.listen(3003).then(({_, port}) => {
     console.log("Listening on port", port);
 }).catch((err) => {
     console.error("Server start error:", err.message);

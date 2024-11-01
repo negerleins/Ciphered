@@ -117,6 +117,13 @@ class Server extends Database {
      * @memberof Server
      */
     #middleware() {
+        const requestTime = function (req, res, next) {
+            req.requestTime = Date.now()
+            next()
+        }
+          
+        this.app.use(requestTime)
+          
         this.app.set('trust proxy', 1);
         this.app.use(cors());
         this.app.use(express.json()); // To parse JSON bodies
@@ -137,13 +144,10 @@ class Server extends Database {
                 }
 
                 this.app[method](route, async (req, res) => {
-                    console.log('Request received:', req.method, req.url);
-
                     await handler(this, req, res);
 
-                    res.on('finish', () => {
-                        console.log('Request finished');
-                    });
+                    if (this.callback)
+                        this.callback(req, res);
                 });
             })
         });
@@ -162,12 +166,15 @@ class Server extends Database {
      * Constructor for the Server class.
      * @constructor
      * @description Create a new instance of the Server class.
+     * @param {string} dbPath - The path to the SQLite3 database file.
+     * @param {object} options - Configuration options for the database connection.
+     * @param {Function} callback - A callback function to be executed after the server is started.
      * @memberof Server
      * @returns {Server}
      */
-    constructor(dbPath, options) {
+    constructor(dbPath, options, callback) {
         super(dbPath, options);
-
+        this.callback = callback;
         this.app = express();
         this.#middleware();
     }

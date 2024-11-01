@@ -36,10 +36,13 @@ class Config {
 
     endpoints = {
         get: {
-            ["/"]: (_, __, res) => {
+            ["/"]: (_, req, res) => {
                 return res.status(StatusCodes.OK).send({
                     response: "We are online!",
-                    status: StatusCodes.OK
+                    status: StatusCodes.OK,
+                    data: {
+                        requestTime: Date.now() - req.requestTime
+                    }
                 });
             }
         },
@@ -305,8 +308,8 @@ class Config {
     }
 
     limiter = {
-        windowMs: 1 * 10 * 1000,
-        limit: 6,
+        windowMs: 1 * 15 * 1000,
+        limit: 10,
         standardHeaders: 'draft-7',
         legacyHeaders: false,
         message: "Too many requests",
