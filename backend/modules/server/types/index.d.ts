@@ -21,6 +21,17 @@ declare class Server extends Database {
     constructor(dbPath: string, options: object, callback: Function);
     /**
      * @public
+     * @type {Function}
+     * @description A callback function to be executed after the server is started.
+     * @memberof Server
+     * @property {Function} callback - A callback function to be executed after the server is started.
+     * @default null
+     * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function}
+    */
+    public set callback(func: any);
+    _callback: any;
+    /**
+     * @public
      * @type {Object}
      * @description An instance of the Express application.
      * @memberof Server
@@ -29,8 +40,18 @@ declare class Server extends Database {
      * @see {@link https://expressjs.com/}
      * @see {@link https://www.npmjs.com/package/express}
     */
-    public set rate_limit(config: any);
-    limiter: any;
+    public set middleware(func: any);
+    /**
+     * @public
+     * @type {Object}
+     * @description An instance of the Express application.
+     * @memberof Server
+     * @property {Object} app - An instance of the Express application.
+     * @default express()
+     * @see {@link https://expressjs.com/}
+     * @see {@link https://www.npmjs.com/package/express}
+    */
+    public set limiter(config: any);
     /**
      * @public
      * @description Set the endpoints for the Express application.
@@ -38,7 +59,6 @@ declare class Server extends Database {
      * @param {Object} data - An object containing the endpoints and their handlers.
      */
     public set endpoints(data: any);
-    callback: Function;
     app: any;
     /**
      * Start the server.

@@ -18,18 +18,45 @@ const __dirname = path.dirname(__filename);
 const __path = path.resolve(__dirname, "database.db");
 
 // Create a new server instance and bind the endpoints
-const server = new Server(__path, {}, ( _, res ) => {
+const server = new Server(__path, {}, (req, res) => {
+    console.log('Request received:', req.method, req.url);
+
+    console.log('Request headers:', res.getHeaders());
+
+    res.on('send', () => {
+        console.log('Response sent', res.statusCode, res.statusMessage);
+    });
+
+    res.on('close', () => {
+        console.log('Response closed', res.statusCode, res.statusMessage);
+    });
+
     res.on('finish', () => {
         console.log('Request finished', res.statusCode, res.statusMessage);
+    });
+
+    res.on('error', (err) => {
+        console.error('Response error', err.message);
+    });
+
+    res.on('timeout', () => {
+        console.error('Response timeout');
+    });
+
+    res.on('end', () => {
+        console.log('Response ended');
     });
 });
 
 // Create a new configuration instance
-const config = new Config();
+const config = new Config(server);
 
-// Set the server configuration
-server.limiter = config.limiter;
-server.endpoints = config.endpoints;
+// Load the configuration
+config.load().then(() => {
+    console.log(" <?> Configuration loaded successfully.");
+}).catch((err) => {
+    console.error(" <!> Configuration load error:", err.message);
+});
 
 // Reset the database
 server.parseExec([

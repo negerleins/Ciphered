@@ -11,7 +11,6 @@
  * @requires url - Utilities for URL resolution and parsing.
 */
 import express from "express";
-import cors from "cors";
 import database from "better-sqlite3";
 import { rateLimit } from 'express-rate-limit'
 // import { WebSocketServer } from "ws"; // Import ws WebSocketServer
@@ -95,8 +94,27 @@ class Server extends Database {
      * @param {Object} data - An object containing the endpoints and their handlers.
      */
     set endpoints(data) {
-        this.#bindEndpoints = data;
-        this.#bind.call(this);
+        this.#_endpoints = data;
+    }
+
+    /**
+     * @public
+     * @description Set the middleware for the Express application.
+     * @memberof Server
+     * @param {Function} func 
+     */
+    set middleware(func) {
+        this.#_middleware = func;
+    }
+
+    /**
+     * @public
+     * @description Set the afterware for the Express application.
+     * @memberof Server
+     * @param {Function} func 
+     */
+    set afterware(func) {
+        this.#_afterware = func;
     }
 
     /**
@@ -104,58 +122,52 @@ class Server extends Database {
      * @type {Object}
      * @description An object containing the endpoints and their handlers.
      * @memberof Server
-     * @property {Object} get - An object containing the GET endpoints and their handlers.
-     * @property {Object} post - An object containing the POST endpoints and their handlers.
     */
-    #bindEndpoints = {};
+    #_endpoints = null;
 
     /**
      * @private
-     * @description Middleware for the Express application.
-     * @returns {void}
+     * @type {Function}
+     * @description An function containing the middleware for the Express application.
      * @memberof Server
-     */
-    #middleware() {
-        const requestTime = function (req, res, next) {
-            req.requestTime = Date.now()
-            next()
-        }
-          
-        this.app.use(requestTime)
-          
-        this.app.set('trust proxy', 1);
-        this.app.use(cors());
-        this.app.use(express.json()); // To parse JSON bodies
-        this.app.use(express.urlencoded({ extended: true })); // To parse x-www-form-urlencoded bodies
-    };
+    */
+    #_middleware = null;
 
     /**
      * @private
+     * @type {Function}
+     * @description An function containing the afterware for the Express application.
+     * @memberof Server
+    */
+    #_afterware = null;
+
+    /**
+     * @public
      * @description Bind the endpoints to the Express application.
      * @returns {void}
      * @memberof Server
      */
-    #bind() {
-        Object.entries(this.#bindEndpoints).forEach(([method, routes]) => {
-            Object.entries(routes).forEach(([route, handler]) => {
-                console.log('Binding route:', method, route);
+    bind() {
+        if (this.#_middleware)
+            this.#_middleware();
 
-                this.app[method](route, async (req, res) => {
-                    await handler(this, req, res);
+        if (this.#_endpoints) {
+            Object.entries(this.#_endpoints).forEach(([method, routes]) => {
+                Object.entries(routes).forEach(([route, handler]) => {
+                    console.log('Binding route:', method, route);
+    
+                    this.app[method](route, async (req, res) => {
+                        await handler(this, req, res);
+    
+                        if (this.callback)
+                            this.callback(req, res);
+                    });
+                })
+            });
+        };
 
-                    if (this.callback)
-                        this.callback(req, res);
-                });
-            })
-        });
-
-        this.app.use(
-            (_, res) => {
-                res.status(405).send({
-                    error: "Method Not Allowed",
-                });
-            }
-        );
+        if (this.#_afterware) {
+            this.app.use(this.#_afterware);
     }
 
     /**
@@ -172,7 +184,6 @@ class Server extends Database {
         super(dbPath, options);
         this.callback = callback;
         this.app = express();
-        this.#middleware();
     }
 
     /**

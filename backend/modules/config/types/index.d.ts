@@ -2,7 +2,7 @@ export default Config;
 declare class Config {
     endpoints: {
         get: {
-            "/": (_: any, __: any, res: any) => any;
+            "/": (_: any, req: any, res: any) => any;
         };
         post: {
             "/send": (database: any, req: any, res: any) => any;
@@ -13,6 +13,8 @@ declare class Config {
             "/create": (database: any, req: any, res: any) => any;
         };
     };
+    callback: (req: any, res: any) => void;
+    middleware: (_: any, res: any) => void;
     limiter: {
         windowMs: number;
         limit: number;
