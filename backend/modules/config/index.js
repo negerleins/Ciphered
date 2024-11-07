@@ -83,34 +83,33 @@ class Module {
             this.server.app.use(helmet());
             this.server.app.disable('x-powered-by');
             this.server.app.set('trust proxy', 1);
+            this.server.app.use(cors());
             this.server.app.use(express.json());
             this.server.app.use(express.urlencoded({ extended: true }));
             this.server.app.use((req, _, next) => {
                 req.requestTime = Date.now()
                 next()
             });
-            this.server.app.use((req, res, next) => {
-                const headersToRemove = [
-                    'X-Powered-By', 'Server', 'Date', 'Connection',
-                    'Access-Control-Allow-Methods', 'Access-Control-Allow-Headers',
-                    'Access-Control-Allow-Origin', 'Access-Control-Allow-Credentials',
-                    'Access-Control-Expose-Headers', 'Access-Control-Max-Age', 'X-Download-Options',
-                    'X-Content-Type-Options', 'X-Frame-Options', 'Strict-Transport-Security',
-                    'Content-Security-Policy', 'X-XSS-Protection', 'Referrer-Policy', 'Expect-CT',
-                    'Feature-Policy', 'Permissions-Policy', 'Cross-Origin-Opener-Policy',
-                    'Cross-Origin-Embedder-Policy', 'Cross-Origin-Resource-Policy', 'Alt-Svc',
-                    'X-XXS-Protection', 'X-Content-Type-Options', 'X-Permitted-Cross-Domain-Policies',
-                    'X-DNS-Prefetch-Control', 'Origin-Agent-Cluster', 'Timing-Allow-Origin',
-                ];
-    
-                headersToRemove.forEach(header => {
-                    res.removeHeader(header);
-                });
-
-                next();
-            });
+            
         },
         afterware: (_, res) => {
+            const headersToRemove = [
+                'X-Powered-By', 'Server', 'Date', 'Connection',
+                'Access-Control-Allow-Methods', 'Access-Control-Allow-Headers',
+                'Access-Control-Allow-Origin', 'Access-Control-Allow-Credentials',
+                'Access-Control-Expose-Headers', 'Access-Control-Max-Age', 'X-Download-Options',
+                'X-Content-Type-Options', 'X-Frame-Options', 'Strict-Transport-Security',
+                'Content-Security-Policy', 'X-XSS-Protection', 'Referrer-Policy', 'Expect-CT',
+                'Feature-Policy', 'Permissions-Policy', 'Cross-Origin-Opener-Policy',
+                'Cross-Origin-Embedder-Policy', 'Cross-Origin-Resource-Policy', 'Alt-Svc',
+                'X-XXS-Protection', 'X-Content-Type-Options', 'X-Permitted-Cross-Domain-Policies',
+                'X-DNS-Prefetch-Control', 'Origin-Agent-Cluster', 'Timing-Allow-Origin',
+            ];
+
+            headersToRemove.forEach(header => {
+                res.removeHeader(header);
+            });
+
             res.status(StatusCodes.NOT_ACCEPTABLE).send({
                 error: "Method Not Allowed"
             });
@@ -141,25 +140,34 @@ class Module {
                     const { key, content } = value;
 
                     try {
-                        // Insert the new message
                         const stmt = database.prepare("INSERT INTO chats (key, content) VALUES (?, ?)");
-                        stmt.run(key, content);
-
-                        res.status(StatusCodes.OK).send({
-                            response: "Message sent successfully",
-                        });
+                        const info = stmt.run(key, content);
 
                         // Delete the message after a period of time if it has not been claimed.
                         setTimeout(() => {
-                            database.prepare("DELETE FROM chats WHERE key = ?").run(content);
+                            if (stmt.changes === 0) {
+                                return;
+                            }
+
+                            try {
+                                const action = database.prepare("DELETE FROM chats WHERE key = ? AND id = ?");
+                                action.run(key, info.lastInsertRowid);
+                            } catch (err) {
+                                console.error("Error deleting chat:", err.message);
+                            }
+
                             console.log("Message deleted after timeout");
-                        }, 60000); // after 1 minute
+                        }, 10000); // after 1 minute
                     } catch (err) {
                         console.error("Database fetch error:", err.message);
 
                         res.status(StatusCodes.INTERNAL_SERVER_ERROR).send({
                             error: "Failed to fetch user",
                             details: err.message,
+                        });
+                    } finally {
+                        res.status(StatusCodes.OK).send({
+                            response: "Message sent successfully",
                         });
                     }
                 },
@@ -190,8 +198,8 @@ class Module {
                             chats,
                         });
 
-                        // Delete the message after it has been claimed
-                        database.prepare("DELETE FROM chats WHERE key = ?").run(key);
+                        const action = database.prepare("DELETE FROM chats WHERE key = ?")
+                        action.run(key);
                     } catch (err) {
                         console.error("Database fetch error:", err.message);
 
@@ -392,6 +400,31 @@ class Module {
                             });
                         }
                     }
+                },
+                ["/serialize"]: (database, req, res) => {
+                    const API_KEY = req.headers['x-api-key'];
+                    
+                    if (API_KEY !== 'rwuy6434tgdgjhtiojiosi838tjue3') {
+                        return res.status(StatusCodes.UNAUTHORIZED).send({
+                            error: "Unauthorized",
+                            details: "Invalid [x-api-key] header.",
+                        });
+                    } else {
+                        try {
+                            database.serialize();
+                        } catch (err) {
+                            console.error("Database serialize error:", err.message);
+
+                            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send({
+                                error: "Failed to serialize database",
+                                details: err.message,
+                            });
+                        } finally {
+                            res.status(StatusCodes.OK).send({
+                                response: "Database serialized successfully"
+                            });
+                        }
+                    }
                 }
             }
         }
@@ -403,9 +436,10 @@ class Module {
             try {
                 this.server.config = this.#config;
                 this.server.bind();
-                resolve();
             } catch (err) {
                 reject(err);
+            } finally {
+                resolve();
             }
         });
     }

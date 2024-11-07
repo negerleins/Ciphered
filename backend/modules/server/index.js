@@ -33,6 +33,28 @@ class Database {
     };
 
     /**
+     * Serialize the database.
+     * 
+     * @public
+     * @memberof Database
+     * @returns {void}
+     * @description Serialize the database to a buffer.
+     * @see {@link https://github.com/WiseLibs/better-sqlite3/blob/HEAD/docs/api.md#serializeoptions---buffer | better-sqlite3}
+    */
+    serialize = () => {
+        try {
+            const buffer = this.database.serialize();
+            this.database.close();
+
+            console.log("Database serialized:", buffer);
+
+            this.database = new database(buffer);
+        } catch (error) {
+            console.error("Database serialization error:", error.message);
+        }
+    }
+
+    /**
      * Executes a given SQL query asynchronously.
      *
      * @param {string} sql - The SQL query to be executed.
