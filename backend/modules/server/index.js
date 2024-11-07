@@ -3,12 +3,9 @@
  *
  * This file sets up and configures the Express application.
  *
- * @requires express - Fast, unopinionated, minimalist web framework for Node.js.
- * @requires cors - Middleware for enabling Cross-Origin Resource Sharing (CORS) with various options.
- * @requires sqlite3 - Asynchronous, non-blocking SQLite3 bindings for Node.js.
- * @requires Joi - Object schema description language and validator for JavaScript objects.
- * @requires path - Utilities for working with file and directory paths.
- * @requires url - Utilities for URL resolution and parsing.
+ * @require express - A web application framework for Node.js.
+ * @require database - A custom database class that extends the SQLite3 database.
+ * @require rateLimit - A middleware function to limit repeated requests to public APIs and/or endpoints.
 */
 import express from "express";
 import database from "better-sqlite3";
@@ -33,7 +30,7 @@ class Database {
      */
     constructor(dbPath, options) {
         this.database = new database(dbPath, options);
-    }
+    };
 
     /**
      * Executes a given SQL query asynchronously.
@@ -84,8 +81,20 @@ class Server extends Database {
      * @see {@link https://www.npmjs.com/package/express}
     */
     set limiter(config) {
-        this.app.use(rateLimit(config));
+        this.app.use(
+            rateLimit(config)
+        );
     }
+
+    /**
+     * @public
+     * @description Set the callback function for the Express application.
+     * @memberof Server
+     * @param {Function} func 
+     */
+    set callback(func) {
+        this.#_callback = func;
+    };
 
     /**
      * @public
@@ -142,6 +151,14 @@ class Server extends Database {
     #_afterware = null;
 
     /**
+     * @private
+     * @type {Function}
+     * @description An function containing the callback for the Express application.
+     * @memberof Server
+    */
+    #_callback = null;
+
+    /**
      * @public
      * @description Bind the endpoints to the Express application.
      * @returns {void}
@@ -157,17 +174,29 @@ class Server extends Database {
                     console.log('Binding route:', method, route);
     
                     this.app[method](route, async (req, res) => {
+                        if (this.#_callback)
+                            this.#_callback(req, res);
+
                         await handler(this, req, res);
-    
-                        if (this.callback)
-                            this.callback(req, res);
                     });
                 })
             });
         };
 
-        if (this.#_afterware) {
+        if (this.#_afterware)
             this.app.use(this.#_afterware);
+    }
+
+    /**
+     * @public
+     * @description Set the configuration for the Express application.
+     * @memberof Server
+     * @param {Object} config - An object containing the configuration data.
+     */
+    set config(config) {
+        Object.entries(config).forEach(([name, data]) => {
+            this[name] = data;
+        });
     }
 
     /**
@@ -182,8 +211,10 @@ class Server extends Database {
      */
     constructor(dbPath, options, callback) {
         super(dbPath, options);
-        this.callback = callback;
         this.app = express();
+        
+        if (callback)
+            this.#_callback = callback;
     }
 
     /**
@@ -219,7 +250,6 @@ class Server extends Database {
             );
         }, Promise.resolve([]));
     };
-
 };
 
 /**

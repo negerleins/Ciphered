@@ -21,28 +21,6 @@ declare class Server extends Database {
     constructor(dbPath: string, options: object, callback: Function);
     /**
      * @public
-     * @type {Function}
-     * @description A callback function to be executed after the server is started.
-     * @memberof Server
-     * @property {Function} callback - A callback function to be executed after the server is started.
-     * @default null
-     * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function}
-    */
-    public set callback(func: any);
-    _callback: any;
-    /**
-     * @public
-     * @type {Object}
-     * @description An instance of the Express application.
-     * @memberof Server
-     * @property {Object} app - An instance of the Express application.
-     * @default express()
-     * @see {@link https://expressjs.com/}
-     * @see {@link https://www.npmjs.com/package/express}
-    */
-    public set middleware(func: any);
-    /**
-     * @public
      * @type {Object}
      * @description An instance of the Express application.
      * @memberof Server
@@ -54,11 +32,39 @@ declare class Server extends Database {
     public set limiter(config: any);
     /**
      * @public
+     * @description Set the callback function for the Express application.
+     * @memberof Server
+     * @param {Function} func
+     */
+    public set callback(func: Function);
+    /**
+     * @public
      * @description Set the endpoints for the Express application.
      * @memberof Server
      * @param {Object} data - An object containing the endpoints and their handlers.
      */
     public set endpoints(data: any);
+    /**
+     * @public
+     * @description Set the middleware for the Express application.
+     * @memberof Server
+     * @param {Function} func
+     */
+    public set middleware(func: Function);
+    /**
+     * @public
+     * @description Set the afterware for the Express application.
+     * @memberof Server
+     * @param {Function} func
+     */
+    public set afterware(func: Function);
+    /**
+     * @public
+     * @description Bind the endpoints to the Express application.
+     * @returns {void}
+     * @memberof Server
+     */
+    public bind(): void;
     app: any;
     /**
      * Start the server.
